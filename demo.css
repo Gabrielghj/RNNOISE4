@@ -1,0 +1,18 @@
+
+.comparison li {
+  display: inline-block;
+  border: 3px solid;
+  border-radius: 6px;
+  padding: 3px;
+  margin: 0px 5px;
+  font-weight: bold;
+  cursor: default;
+}
+
+.algorithm li {
+  border-color: #00030f;
+}
+
+.algorithm li:hover {
+  background-color: #b2b7bd;
+}
