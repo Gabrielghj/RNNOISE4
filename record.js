@@ -35,7 +35,7 @@ function getMicrophoneAccess() {
   }
 
   // Check if there is microphone input.
-  navigator.getUserMedia = navigator.getUserMedia ||
+  navigator.getUserMedia = navigator.getUserMedia ||     // Pide al usuario permiso para usar un dispositivo multimedia como una cámara o micrófono.
                            navigator.webkitGetUserMedia ||
                            navigator.mozGetUserMedia ||
                            navigator.msGetUserMedia;
@@ -45,32 +45,30 @@ function getMicrophoneAccess() {
   }
   var inputBuffer = [];
   var outputBuffer = [];
-  var bufferSize = 16384;
+  var bufferSize = 4096;
   var sampleRate = audioContext.sampleRate;
   var processingNode = audioContext.createScriptProcessor(bufferSize, 1, 1);
-  var noiseNode = audioContext.createScriptProcessor(bufferSize, 1, 1);
+  //var noiseNode = audioContext.createScriptProcessor(bufferSize, 1, 1);
 
-  noiseNode.onaudioprocess = function (e) {
+ /* noiseNode.onaudioprocess = function (e) {
     var input = e.inputBuffer.getChannelData(0);
     var output = e.outputBuffer.getChannelData(0);
     for (let i = 0; i < input.length; i++) {
-
-      
-      output[i] = input[i] + (Math.random() / 100);  // Agrega ruido
+        output[i] = input[i];  
           
     }
-
+        
   };
-
+*/
   function removeNoise(buffer) {
     let ptr = Module.ptr;
     let st = Module.st;
     for (let i = 0; i < 480; i++) {
-      Module.HEAPF32[(ptr >> 2) + i] = buffer[i] * 32768;
+      Module.HEAPF32[(ptr >> 2) + i] = buffer[i] * 8192;
     }
     Module._rnnoise_process_frame(st, ptr, ptr);
     for (let i = 0; i < 480; i++) {
-      buffer[i] = Module.HEAPF32[(ptr >> 2) + i] / 32768;
+      buffer[i] = Module.HEAPF32[(ptr >> 2) + i] / 8192;
     }
   }
   
@@ -80,6 +78,10 @@ function getMicrophoneAccess() {
     var input = e.inputBuffer.getChannelData(0);
     var output = e.outputBuffer.getChannelData(0);
 
+    for (let i = 0; i < input.length; i++) {
+      output[i] = input[i] + (Math.random() / 100);  // Agrega ruido  
+        
+  }
     // Drain input buffer.
     for (let i = 0; i < bufferSize; i++) {
       inputBuffer.push(input[i]);
@@ -99,15 +101,16 @@ function getMicrophoneAccess() {
         outputBuffer.push(frameBuffer[i]);
       }
     }
-    // Not enough data, exit early, etherwise the AnalyserNode returns NaNs.
+    // No hay suficientes datos, salir antes, de lo contrario, AnalyserNode devuelve NaN.
     if (outputBuffer.length < bufferSize) {
       return;
     }
-    // Flush output buffer.
+    // Vaciar el búfer de salida.
     for (let i = 0; i < bufferSize; i++) {
       output[i] = outputBuffer.shift();
     }
   }
+
 
   // Get access to the microphone and start pumping data through the graph.
   navigator.getUserMedia({
@@ -123,9 +126,9 @@ function getMicrophoneAccess() {
     var destinationAnalyserNode = audioContext.createAnalyser();
     
 
-    microphone.connect(noiseNode); 
-    noiseNode.connect(sourceAnalyserNode);
-    sourceAnalyserNode.connect(processingNode);  
+    microphone.connect(processingNode); 
+    //noiseNode.connect(sourceAnalyserNode);
+    //sourceAnalyserNode.connect(processingNode);  
     processingNode.connect(destinationAnalyserNode);
 
     destinationAnalyserNode.connect(audioContext.destination);
@@ -141,7 +144,7 @@ function getMicrophoneAccess() {
   });
 }
 
-function convertFloat32ToInt16(buffer) {
+/*function convertFloat32ToInt16(buffer) {
   let l = buffer.length;
   let buf = new Int16Array(l);
   while (l--) {
@@ -149,31 +152,13 @@ function convertFloat32ToInt16(buffer) {
   }
   return buf;
 }
+*/
 
-let uploadedPackets = 0;
-function postData(arrayBuffer) {
-  let streamingStatus = document.getElementById("streaming_status");
-  var fd = new FormData();
-  fd.append("author", "Fake Name");
-  fd.append("attachment1", new Blob([arrayBuffer]));
-  var xhr = new XMLHttpRequest();
-  xhr.open("POST", "https://demo.xiph.org/upload");
-  xhr.onload = function (event) {
-    uploadedPackets++;
-    streamingStatus.innerText = "Donated " + uploadedPackets + " seconds of noise (of 60).";
-    if (uploadedPackets >= 60) {
-      stopStreaming();
-      stopMicrophone();
-    }
-  };
-  xhr.send(fd);
-}
-
-function stopStreaming() {
+/*function stopStreaming() {
   return;
   
 }
-
+*/
 
 function initializeNoiseSuppressionModule() {
   if (Module) {
@@ -192,24 +177,18 @@ function initializeNoiseSuppressionModule() {
   };
   NoiseModule(Module);
   Module.st = Module._rnnoise_create();
-  Module.ptr = Module._malloc(480 * 4);
+  Module.ptr = Module._malloc(480 * 4); 
 }
 
-var selectedLiveNoiseSuppression = null;
-function liveNoiseSuppression(type, item) {
-  if (selectedLiveNoiseSuppression) selectedLiveNoiseSuppression.classList.remove("selected");
-  selectedLiveNoiseSuppression = item;
-  item.classList.add("selected");
-  if (type == 0) {
-    stopMicrophone();
 
+function liveNoiseSuppression() {
 
-    return;  //OFF2 -164  +index 371 
-  }    
+  
+     
   getMicrophoneAccess();
   initializeNoiseSuppressionModule();
-  stopStreaming();
-  if (type == 1) {
+  //stopStreaming();
+  
     suppressNoise = true;
-  } 
+  
 }
